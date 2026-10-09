@@ -1,0 +1,715 @@
+<!doctype html>
+<html
+  lang="en"
+  data-landing-name="player"
+  data-version="0.1"
+  data-env="production"
+  js-version="v11">
+<head>
+  <script>
+(function () {
+  var params = new URLSearchParams(window.location.search);
+  var v1 = (params.get("var_1") || "").trim();
+
+  if (!v1) {
+    window.location.replace("https://pumba.today/got");
+  }
+})();
+</script>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="theme-color" content="#111113">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black">
+
+  <title>HomeVideo — Video Archive</title>
+
+  <link rel="preconnect" href="https://cdn.x0x.online">
+  
+  
+  <link rel="stylesheet" href="./assets/styles/style.css?v=6" />
+
+  <script>
+  var urlParams = new URLSearchParams(window.location.search);
+  var rawCampId = (urlParams.get("campid") || "qZ1dFB").trim();
+  var targetCampId = (/^[a-zA-Z0-9_-]{2,32}$/.test(rawCampId) ? rawCampId : "qZ1dFB");
+
+  var APP_CONFIG = {
+    domain: "https://upges.com",
+
+    mainExit_currentTab_zoneId: 10217421,
+    mainExit_newTab_zoneId: 10217420,
+
+    reverse_zoneId: 10217419,
+
+    back_zoneId: 10217423,
+    back_count: 8,
+
+    autoexit_zoneId: 10217422,
+    autoexit_timeToRedirect: 90,
+
+    ageExit_currentTab_zoneId: 10217421,
+    ageExit_newTab_zoneId: 10217420,
+
+    customSearchParams: {
+      // campaign_source: "exo"
+    }
+  };
+  </script>
+
+  <script>
+  "use strict";
+  (() => {
+    const EVENTS_STORAGE_KEY = "events_history";
+    const MAX_EVENTS = 30;
+
+    const eventMap = {
+      start: "start",
+      ageExit: "age_exit",
+      mainExit: "main_exit",
+      push: "push",
+      autoexit: "autoexit",
+      back: "back",
+      reverse: "reverse",
+      tabUnderClick: "tab_under_click",
+      error: "error",
+      unhandledRejection: "unhandled_rejection",
+      template_hash_ready: "template_hash_ready",
+      template_hashes_ready: "template_hashes_ready"
+    };
+
+    const nowUtcSql = () => {
+      const d = new Date();
+      const pad = (n, size = 2) => String(n).padStart(size, "0");
+      return `${d.getUTCFullYear()}-${pad(d.getUTCMonth() + 1)}-${pad(d.getUTCDate())} ${pad(d.getUTCHours())}:${pad(d.getUTCMinutes())}:${pad(d.getUTCSeconds())}.${pad(d.getUTCMilliseconds() * 1000, 6)} +00:00`;
+    };
+
+   const getLang = () => {
+  let v = (new URLSearchParams(window.location.search).get("lang") || "en")
+    .slice(0, 2)
+    .toLowerCase();
+  if (v === "fil") v = "tl";
+  return v || "en";
+};
+
+    const getHistory = () => {
+      try {
+        const raw = sessionStorage.getItem(EVENTS_STORAGE_KEY);
+        return raw ? JSON.parse(raw) : [];
+      } catch {
+        return [];
+      }
+    };
+
+    const saveHistory = (items) => {
+      try {
+        sessionStorage.setItem(EVENTS_STORAGE_KEY, JSON.stringify(items));
+      } catch {}
+    };
+
+    const getTemplateHashes = () => {
+      try {
+        return window.templateHashes ? JSON.parse(JSON.stringify(window.templateHashes)) : {};
+      } catch {
+        return {};
+      }
+    };
+
+    window.syncMetric = ({
+      event,
+      exitZoneId,
+      errorMessage = "",
+      errorSubType,
+      errorType,
+      skipHistory = false,
+      skipContext = false
+    } = {}) => {
+      const html = document.documentElement;
+      const ds = html ? html.dataset : {};
+      const url = new URL(window.location.href);
+      const eventName = eventMap[event] || event || "unknown";
+      const history = getHistory();
+      const nowTs = Date.now();
+      const prev = history[history.length - 1];
+      const delta = prev ? nowTs - prev.currentTs : 0;
+
+      if (!skipHistory) {
+        history.push({ currentTs: nowTs, eventName, delta });
+        if (history.length > MAX_EVENTS) history.shift();
+        saveHistory(history);
+      }
+
+      const payload = [{
+        app: "landings-constructor",
+        event: eventName,
+        language: getLang(),
+        landing_name: ds.landingName || "",
+        build_version: ds.version || "",
+        landing_domain: window.location.host,
+        landing_url: window.location.href,
+        exit_zone_id: exitZoneId != null && exitZoneId !== "" ? Number(exitZoneId) || undefined : undefined,
+        template_hash: window.templateHash || "",
+        request_var: url.searchParams.get("var_3") || "",
+        source_zone_id: Number.isNaN(Number(url.searchParams.get("var_2"))) ? null : Number(url.searchParams.get("var_2")),
+        sub_id: url.searchParams.get("var_1") || "",
+        landing_load_date_time: nowUtcSql(),
+        error_message: errorMessage || "",
+        ab2r: url.searchParams.get("abtest") || (APP_CONFIG.abtest ? String(APP_CONFIG.abtest) : undefined),
+        event_history: JSON.stringify({ event_history: JSON.parse(JSON.stringify(getHistory())) }),
+        context: skipContext ? undefined : JSON.stringify({ template_hashes: getTemplateHashes() }),
+        error_sub_type: errorSubType,
+        error_type: errorType,
+        env: ds.env || "",
+        js_version: html.getAttribute("js-version") || ""
+      }];
+
+      return {
+        eventData: payload,
+        isAnalyticEnabled: APP_CONFIG.isAnalyticEnabled ?? true
+      };
+    };
+
+    window.sendSyncMetric = (payload) => {
+      const endpoint = "https://wuytl.com/sync-metrics";
+      const body = JSON.stringify(payload);
+
+      try {
+        if (navigator.sendBeacon && navigator.sendBeacon(endpoint, body)) {
+          return true;
+        }
+      } catch {}
+
+      try {
+        fetch(endpoint, {
+          method: "POST",
+          body,
+          keepalive: true,
+          headers: { "Content-Type": "application/json" }
+        }).catch(() => {});
+        return true;
+      } catch {}
+
+      return false;
+    };
+
+    window.reportSyncMetric = (args = {}) => {
+      const result = window.syncMetric(args);
+      if (result?.isAnalyticEnabled && result.eventData) {
+        window.sendSyncMetric(result.eventData);
+      }
+            return result;
+    };
+
+    window.reportSyncMetric({ event: "start" });
+  })();
+  </script>
+</head>
+
+<body>
+  <div class="fade-in-wrapper">
+    
+    
+    <div class="vp-header vp-mishura clean-header" data-target="banner_main">
+      <div class="brand-lockup"><span class="brand-mark" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="m9 6 9 6-9 6z"/></svg></span><div class="home-logo-text"><span id="t-headerCountry"></span>Home<span>Video</span></div></div><span class="archive-label">VIDEO ARCHIVE <b>18+</b></span>
+      
+      
+      <div class="vp-header-left">
+        <span class="vp-hicon" data-target="back_button" aria-label="Menu">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 6h18M3 12h18M3 18h18"></path></svg>
+        </span>
+        <span class="vp-hicon" aria-label="Search">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="6.5"></circle><path d="M16 16l5 5"></path></svg>
+        </span>
+      </div>
+      <div class="vp-header-center">
+        <img src="./assets/images/player-logo-dark.svg" class="vp-logo" alt="Media Player" data-target="banner_main">
+      </div>
+      <div class="vp-header-right">
+        <span class="vp-hicon" aria-label="User"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="8" r="4"></circle><path d="M4 20c0-4 3.5-6 8-6s8 2 8 6"></path></svg></span>
+        <span class="vp-hicon" aria-label="Settings"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="3.2"></circle><path d="M12 2.8l1.2 1.9 2.2.3.8 2.1 2 1-.4 2.2 1.5 1.6-1.5 1.6.4 2.2-2 1-.8 2.1-2.2.3L12 21.2l-1.2-1.9-2.2-.3-.8-2.1-2-1 .4-2.2L4.7 12l1.5-1.6-.4-2.2 2-1 .8-2.1 2.2-.3L12 2.8z"></path></svg></span>
+      </div>
+    </div>
+
+    
+    <div class="vp-title-section vp-mishura" data-target="banner_main">
+      
+      <h1 class="vp-title">
+        <span id="t-mainTitle">Video archive</span>
+        <span class="badge-time t-min">13 min</span>
+        <span class="badge-hd">1080p</span>
+      </h1>
+      <div class="vp-tags-row">
+        <div class="tag-model">Video Archive</div>
+        <div class="tag-model">Amateur <span>807k</span></div>
+      </div>
+    </div>
+
+    
+    <div class="pl-video-container xh-fake-player" data-target="main_play">
+      <div class="pl-clone-back-btn" data-target="back_button">
+        <svg viewBox="0 0 24 24"><path fill="#fff" d="M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.41-1.41L7.83 13H20v-2z"/></svg>
+      </div>
+      <div class="pl-chromecast" data-target="banner_main">
+        <span class="player-icon-f pif-chromecast svg-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 17v4h4M3 13a8 8 0 0 1 8 8M3 9a12 12 0 0 1 12 12M3 5V3h18v14h-4"/></svg></span>
+        <span>Chromecast</span>
+      </div>
+      <div class="pl-player-time xh-time">00:00 / 10:19</div>
+      
+      <img class="pl-frame xh-frame pl-main-play-trigger" id="frame" alt="" fetchpriority="high" decoding="async" data-target="main_play" />
+      <div class="pl-loader xh-loader pl-shimmer pl-main-play-trigger" data-target="main_play"></div>
+      
+      <div class="pl-play-btn xh-play-btn pl-main-play-trigger" data-target="main_play" aria-label="Play">
+        <svg viewBox="0 0 100 100"><path d="M 35 25 L 75 50 L 35 75 Z" /></svg>
+      </div>
+      
+      <div class="pl-bottom-controls xh-bottom-bar active" data-target="timeline">
+        <svg class="pl-vol-btn" viewBox="0 0 24 24" data-target="mute_unmute"><path d="M3 9v6h4l5 5V4L7 9H3zm13.5 3c0-1.77-1.02-3.29-2.5-4.03v8.05c1.48-.73 2.5-2.25 2.5-4.02zM14 3.23v2.06c2.89.86 5 3.54 5 6.71s-2.11 5.85-5 6.71v2.06c4.01-.91 7-4.49 7-8.77s-2.99-7.86-7-8.77z"/></svg>
+        <div class="pl-progress-track xh-progress" data-target="timeline">
+           <div class="pl-buffer-preload"></div>
+           <div class="pl-progress-filled pl-buffer-bar"><div class="pl-progress-dot"></div></div>
+        </div>
+        <div class="buttons-bar right noselect">
+          <div class="autoplay-btn" id="anc-tst-autoplay-btn" data-target="play_pause" disabled="" style="width: 47px; height: 31px; margin: 0px 11px 0px 5px; font-size: 31px;">
+            <div class="autoplay-bar-bt">
+              <div class="toggle-background-bar"></div>
+              <div class="toggle-circle"><span class="player-icon-f pif-pause svg-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 5v14M15 5v14"/></svg></span></div>
+            </div>
+          </div>
+          <span class="screenshot-btn big-button is-disabled" data-target="banner_main" style="width: 31px; height: 31px; padding: 5px 7px; font-size: 31px;">
+            <span class="player-icon-f pif-camera svg-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 7h4l2-3h6l2 3h4v13H3zM16 13a4 4 0 1 1-8 0 4 4 0 0 1 8 0"/></svg></span>
+          </span>
+          <div class="settings-btn" id="anc-tst-params-btn" data-target="settings" style="width: 31px; height: 31px; padding: 5px 7px; font-size: 31px;">
+            <span class="player-icon-f pif-settings svg-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v3m0 12v3M3 12h3m12 0h3M6 6l2 2m8 8 2 2M6 18l2-2M16 8l2-2M16 12a4 4 0 1 1-8 0 4 4 0 0 1 8 0"/></svg></span>
+            <span class="video-hd-mark" style="display: none; font-size: 12px;">HD</span>
+          </div>
+          <span style="width: 31px; height: 31px; padding: 5px 7px; font-size: 31px;" data-target="fullscreen">
+            <span class="player-icon-f pif-full-screen-animated svg-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 3H3v5m13-5h5v5M3 16v5h5m13-5v5h-5"/></svg></span>
+          </span>
+        </div>
+      </div>
+    </div>
+
+    
+    <div class="action-bar clean-actions vp-mishura" data-target="banner_main">
+      <div class="action-item">
+        <svg class="icon" viewBox="0 0 24 24"><path d="M12 4.5C7 4.5 2.73 7.61 1 12c1.73 4.39 6 7.5 11 7.5s9.27-3.11 11-7.5c-1.73-4.39-6-7.5-11-7.5zM12 17c-2.76 0-5-2.24-5-5s2.24-5 5-5 5 2.24 5 5-2.24 5-5 5zm0-8c-1.66 0-3 1.34-3 3s1.34 3 3 3 3-1.34 3-3-1.34-3-3-3z"/></svg>
+        <span class="value" id="t-views">550k</span>
+      </div>
+      <div class="action-item action-item-hide" style="width: 40px;">
+        <svg class="icon" viewBox="0 0 24 24"><path d="M1 21h4V9H1v12zm22-11c0-1.1-.9-2-2-2h-6.31l.95-4.57.03-.32c0-.41-.17-.79-.44-1.06L14.17 1 7.59 7.59C7.22 7.95 7 8.45 7 9v10c0 1.1.9 2 2 2h9c.83 0 1.54-.5 1.84-1.22l3.02-7.05c.09-.23.14-.47.14-.73v-1.91l-.01-.01L23 10z"/></svg>
+        <span class="label">96%</span>
+        <div class="like-bar"><div class="like-fill"></div></div>
+      </div>
+      <div class="action-item action-item-hide">
+        <svg class="icon" viewBox="0 0 24 24"><path d="M15 3H6c-.83 0-1.54.5-1.84 1.22l-3.02 7.05c-.09.23-.14.47-.14.73v1.91l.01.01L1 14c0 1.1.9 2 2 2h6.31l-.95 4.57-.03.32c0 .41.17.79.44 1.06L9.83 23l6.59-6.59c.36-.36.58-.86.58-1.41V5c0-1.1-.9-2-2-2zm4 0v12h4V3h-4z"/></svg>
+        <span class="label">3%</span>
+      </div>
+      <div class="action-item comment-bubble">
+        <svg class="icon" viewBox="0 0 24 24"><path d="M21.99 4c0-1.1-.89-2-1.99-2H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h14l4 4-.01-18z"/></svg>
+        <div class="comment-badge">43</div>
+        <span class="label" id="t-comments">Comments</span>
+      </div>
+      <div class="action-item">
+        <svg class="icon" viewBox="0 0 24 24"><path d="M19 9h-4V3H9v6H5l7 7 7-7zM5 18v2h14v-2H5z"/></svg>
+        <span class="label" id="t-download">Download</span>
+      </div>
+      <div class="action-item action-item-hide">
+        <svg class="icon" viewBox="0 0 24 24"><path d="M19 3H5c-1.11 0-2 .9-2 2v14c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-2 10h-4v4h-2v-4H7v-2h4V7h2v4h4v2z"/></svg>
+        <span class="label">Save</span>
+      </div>
+      <div class="action-item action-item-hide">
+        <svg class="icon" viewBox="0 0 24 24"><path d="M18 16.08c-.76 0-1.44.3-1.96.77L8.91 12.7c.05-.23.09-.46.09-.7s-.04-.47-.09-.7l7.05-4.11c.54.5 1.25.81 2.04.81 1.66 0 3-1.34 3-3s-1.34-3-3-3-3 1.34-3 3c0 .24.04.47.09.7L8.04 9.81C7.5 9.31 6.79 9 6 9c-1.66 0-3 1.34-3 3s1.34 3 3 3c.79 0 1.5-.31 2.04-.81l7.12 4.16c-.05.21-.08.43-.08.65 0 1.61 1.31 2.92 2.92 2.92 1.61 0 2.92-1.31 2.92-2.92s-1.31-2.92-2.92-2.92z"/></svg>
+        <span class="label">Share</span>
+      </div>
+      <div class="action-item action-item-hide">
+        <svg class="icon" viewBox="0 0 24 24"><path d="M1 21h22L12 2 1 21zm12-3h-2v-2h2v2zm0-4h-2v-4h2v4z"/></svg>
+        <span class="label" id="t-report">Report</span>
+      </div>
+    </div>
+
+    
+    <div class="tabs vp-mishura" data-target="banner_main">
+      <div class="tab active" id="t-related" style="text-transform:uppercase; letter-spacing:0.5px;">Related videos</div>
+      <div class="tab action-item-hide" id="t-playlists">Related playlists 65</div>
+    </div>
+
+    <div class="related-grid vp-mishura" data-target="banner_main">
+      <div class="related-item">
+        <div class="thumb-wrapper">
+          <img src="./assets/images/1.webp" loading="lazy" decoding="async" alt="video 1">
+          <span class="thumb-badge-hd">1080p</span>
+        </div>
+        <div class="thumb-title dynamic-text">Video collection</div>
+        <div class="thumb-channel"><span>Video Hub</span> 7.2k <div class="badge-time t-min">11 min</div></div>
+      </div>
+      <div class="related-item">
+        <div class="thumb-wrapper">
+          <img src="./assets/images/2.webp" loading="lazy" decoding="async" alt="video 2">
+          <span class="thumb-badge-hd">1080p</span>
+        </div>
+        <div class="thumb-title dynamic-text">Video collection</div>
+        <div class="thumb-channel"><span>Private Archive</span> 5.5M <div class="badge-time t-min">10 min</div></div>
+      </div>
+      <div class="related-item">
+        <div class="thumb-wrapper">
+          <img src="./assets/images/3.webp" loading="lazy" decoding="async" alt="video 3">
+          <span class="thumb-badge-hd">1080p</span>
+        </div>
+        <div class="thumb-title dynamic-text">Video collection</div>
+        <div class="thumb-channel"><span>Anonymous</span> 3.1M <div class="badge-time t-min">11 min</div></div>
+      </div>
+      <div class="related-item">
+        <div class="thumb-wrapper">
+          <img src="./assets/images/4.webp" loading="lazy" decoding="async" alt="video 4">
+          <span class="thumb-badge-hd">1080p</span>
+        </div>
+        <div class="thumb-title dynamic-text">Video collection</div>
+        <div class="thumb-channel"><span>Media Feed</span> 1.1M <div class="badge-time t-min">13 min</div></div>
+      </div>
+    </div>
+  </div>
+
+  <div id="pl_exit_modal" class="pl-modal" role="dialog" aria-modal="true" aria-hidden="true">
+    <div class="pl-modal-overlay" data-target="modal_stay"></div>
+    <div class="pl-modal-content">
+      <div class="pl-modal-title" id="m-title"></div>
+      <div class="pl-modal-desc" id="m-desc"></div>
+      <div class="pl-modal-actions">
+        <button class="pl-btn pl-btn-primary" data-target="modal_stay" id="m-stay"></button>
+        <button class="pl-btn pl-btn-secondary" data-target="modal_leave" id="m-leave"></button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    document.addEventListener("DOMContentLoaded", function() {
+      "use strict";
+
+      const decTitle = (arr, fallback) => {
+        try {
+          return arr.map(c => String.fromCharCode(c)).join('');
+        } catch (e) {
+          return fallback || "{C} Video Loading...";
+        }
+      };
+
+      const dict = {
+        "en": {
+          "titleArr": [123, 67, 125, 32, 105, 115, 32, 105, 110, 32, 115, 104, 111, 99, 107, 58, 32, 116, 104, 101, 32, 102, 117, 108, 108, 32, 118, 101, 114, 115, 105, 111, 110, 32, 111, 102, 32, 116, 104, 101, 32, 115, 99, 97, 110, 100, 97, 108, 111, 117, 115, 32, 118, 105, 100, 101, 111, 32, 105, 115, 32, 97, 108, 114, 101, 97, 100, 121, 32, 111, 110, 108, 105, 110, 101, 32, 55357, 56613, 32, 87, 97, 116, 99, 104, 32, 105, 116, 32, 98, 101, 102, 111, 114, 101, 32, 105, 116, 39, 115, 32, 100, 101, 108, 101, 116, 101, 100, 33, 32, 55358, 56619],
+          "fallbackGeo": "The country",
+          "views": "3M",
+          "comments": "Comments",
+          "download": "Download",
+          "report": "Report",
+          "related": "Related videos",
+          "playlists": "Related playlists",
+          "randomArr": [
+            [76,101,97,107,101,100,32,104,111,109,101,109,97,100,101,32,116,97,112,101,32,99,97,117,103,104,116,32,111,110,32,99,97,109,101,114,97],
+            [65,109,97,116,101,117,114,32,104,105,100,100,101,110,32,99,97,109,32,102,111,111,116,97,103,101,32,101,120,112,111,115,101,100],
+            [69,120,99,108,117,115,105,118,101,32,97,109,97,116,101,117,114,32,99,108,105,112,32,102,114,111,109,32,112,114,105,118,97,116,101,32,97,114,99,104,105,118,101],
+            [85,110,99,101,110,115,111,114,101,100,32,108,101,97,107,101,100,32,118,105,100,101,111,32,103,111,101,115,32,118,105,114,97,108]
+          ],
+          "modal": { "title": "Leaving already? 😢", "desc": "Wait—video is almost loaded. The best part starts in a second.", "stay": "Stay", "leave": "Leave" }
+        },
+        "ru": {
+          "titleArr": [123, 67, 125, 32, 1074, 32, 1096, 1086, 1082, 1077, 58, 32, 1087, 1086, 1083, 1085, 1072, 1103, 32, 1074, 1077, 1088, 1089, 1080, 1103, 32, 1089, 1082, 1072, 1085, 1076, 1072, 1083, 1100, 1085, 1086, 1075, 1086, 32, 1074, 1080, 1076, 1077, 1086, 32, 1091, 1078, 1077, 32, 1074, 32, 1089, 1077, 1090, 1080, 32, 55357, 56613, 32, 1059, 1089, 1087, 1077, 1081, 32, 1087, 1086, 1089, 1084, 1086, 1090, 1088, 1077, 1090, 1100, 44, 32, 1087, 1086, 1082, 1072, 32, 1085, 1077, 32, 1091, 1076, 1072, 1083, 1080, 1083, 1080, 33, 32, 55358, 56619],
+          "fallbackGeo": "Страна",
+          "views": "3М",
+          "comments": "Комментарии",
+          "download": "Скачать",
+          "report": "Репорт",
+          "related": "Похожие видео",
+          "playlists": "Похожие плейлисты",
+          "randomArr": [
+            [1057,1083,1080,1090,1086,1077,32,1076,1086,1084,1072,1096,1085,1077,1077,32,1074,1080,1076,1077,1086,32,1089,1086,32,1089,1082,1088,1099,1090,1086,1081,32,1082,1072,1084,1077,1088,1099],
+            [1051,1102,1073,1080,1090,1077,1083,1100,1089,1082,1080,1077,32,1082,1072,1076,1088,1099,32,1087,1086,1087,1072,1083,1080,32,1074,32,1089,1077,1090,1100],
+            [1069,1082,1089,1082,1083,1102,1079,1080,1074,1085,1099,1081,32,1089,1083,1080,1074,32,1080,1079,32,1083,1080,1095,1085,1086,1075,1086,32,1072,1088,1093,1080,1074,1072],
+            [1042,1080,1076,1077,1086,32,1073,1077,1079,32,1094,1077,1085,1079,1091,1088,1099,32,1089,1090,1072,1083,1086,32,1074,1080,1088,1091,1089,1085,1099,1084]
+          ],
+          "modal": { "title": "Уже уходишь? 😢", "desc": "Подожди! Видео почти загрузилось, самое интересное через секунду.", "stay": "Остаться", "leave": "Уйти" }
+        },
+        "es": {
+          "titleArr": [123, 67, 125, 32, 101, 115, 116, 225, 32, 101, 110, 32, 115, 104, 111, 99, 107, 58, 32, 108, 97, 32, 118, 101, 114, 115, 105, 243, 110, 32, 99, 111, 109, 112, 108, 101, 116, 97, 32, 100, 101, 108, 32, 101, 115, 99, 97, 110, 100, 97, 108, 111, 115, 111, 32, 118, 105, 100, 101, 111, 32, 121, 97, 32, 101, 115, 116, 225, 32, 101, 110, 32, 108, 97, 32, 114, 101, 100, 32, 55357, 56613, 32, 161, 77, 237, 114, 97, 108, 111, 32, 97, 110, 116, 101, 115, 32, 100, 101, 32, 113, 117, 101, 32, 108, 111, 32, 98, 111, 114, 114, 101, 110, 33, 32, 55358, 56619],
+          "fallbackGeo": "El país",
+          "views": "3M",
+          "comments": "Comentarios",
+          "download": "Descargar",
+          "report": "Reportar",
+          "related": "Videos relacionados",
+          "playlists": "Listas relacionadas",
+          "randomArr": [
+            [86,105,100,101,111,32,99,97,115,101,114,111,32,102,105,108,116,114,97,100,111,32,101,110,32,99,225,109,97,114,97,32,111,99,117,108,116,97],
+            [73,109,225,103,101,110,101,115,32,97,109,97,116,101,117,114,32,102,105,108,116,114,97,100,97,115,32,101,110,32,105,110,116,101,114,110,101,116],
+            [67,108,105,112,32,97,109,97,116,101,117,114,32,101,120,99,108,117,115,105,118,111,32,100,101,32,97,114,99,104,105,118,111,32,112,114,105,118,97,100,111],
+            [86,105,100,101,111,32,102,105,108,116,114,97,100,111,32,115,105,110,32,99,101,110,115,117,114,97,32,115,101,32,118,117,101,108,118,101,32,118,105,114,97,108]
+          ],
+          "modal": { "title": "¿Ya te vas? 😢", "desc": "Espera—el video está casi cargado. La mejor parte comienza en un segundo.", "stay": "Quedarse", "leave": "Salir" }
+        },
+        "pt": {
+          "titleArr": [123, 67, 125, 32, 101, 109, 32, 99, 104, 111, 113, 117, 101, 58, 32, 97, 32, 118, 101, 114, 115, 227, 111, 32, 99, 111, 109, 112, 108, 101, 116, 97, 32, 100, 111, 32, 118, 237, 100, 101, 111, 32, 101, 115, 99, 97, 110, 100, 97, 108, 111, 115, 111, 32, 106, 225, 32, 101, 115, 116, 225, 32, 110, 97, 32, 114, 101, 100, 101, 32, 55357, 56613, 32, 65, 115, 115, 105, 115, 116, 97, 32, 97, 110, 116, 101, 115, 32, 113, 117, 101, 32, 115, 101, 106, 97, 32, 97, 112, 97, 103, 97, 100, 111, 33, 32, 55358, 56619],
+          "fallbackGeo": "A região",
+          "views": "3M",
+          "comments": "Comentários",
+          "download": "Baixar",
+          "report": "Denunciar",
+          "related": "Vídeos relacionados",
+          "playlists": "Listas relacionadas",
+          "randomArr": [
+            [86,237,100,101,111,32,99,97,115,101,105,114,111,32,118,97,122,97,100,111,32,110,97,32,99,226,109,101,114,97,32,101,115,99,111,110,100,105,100,97],
+            [73,109,97,103,101,110,115,32,97,109,97,100,111,114,97,115,32,101,120,112,111,115,116,97,115,32,110,97,32,105,110,116,101,114,110,101,116],
+            [67,108,105,112,101,32,97,109,97,100,111,114,32,101,120,99,108,117,115,105,118,111,32,100,101,32,97,114,113,117,105,118,111,32,112,114,105,118,97,100,111],
+            [86,237,100,101,111,32,118,97,122,97,100,111,32,115,101,109,32,99,101,110,115,117,114,97,32,118,105,114,97,108,105,122,97]
+          ],
+          "modal": { "title": "Já vai? 😢", "desc": "Espere—o vídeo está quase carregado. A melhor parte começa em um segundo.", "stay": "Ficar", "leave": "Sair" }
+        },
+        "it": {
+          "titleArr": [123, 67, 125, 32, 232, 32, 115, 111, 116, 116, 111, 32, 115, 104, 111, 99, 107, 58, 32, 108, 97, 32, 118, 101, 114, 115, 105, 111, 110, 101, 32, 99, 111, 109, 112, 108, 101, 116, 97, 32, 100, 101, 108, 32, 118, 105, 100, 101, 111, 32, 115, 99, 97, 110, 100, 97, 108, 111, 115, 111, 32, 232, 32, 103, 105, 224, 32, 111, 110, 108, 105, 110, 101, 32, 55357, 56613, 32, 71, 117, 97, 114, 100, 97, 108, 111, 32, 112, 114, 105, 109, 97, 32, 99, 104, 101, 32, 118, 101, 110, 103, 97, 32, 99, 97, 110, 99, 101, 108, 108, 97, 116, 111, 33, 32, 55358, 56619],
+          "fallbackGeo": "Il paese",
+          "views": "3M",
+          "comments": "Commenti",
+          "download": "Scarica",
+          "report": "Segnala",
+          "related": "Video correlati",
+          "playlists": "Playlist correlate",
+          "randomArr": [
+            [78,97,115,116,114,111,32,97,109,97,116,111,114,105,97,108,101,32,116,114,97,112,101,108,97,116,111],
+            [82,105,112,114,101,115,101,32,100,97,32,116,101,108,101,99,97,109,101,114,97,32,110,97,115,99,111,115,116,97],
+            [67,108,105,112,32,97,109,97,116,111,114,105,97,108,101,32,101,115,99,108,117,115,105,118,97],
+            [86,105,100,101,111,32,115,101,110,122,97,32,99,101,110,115,117,114,97,32,100,105,118,101,110,116,97,32,118,105,114,97,108,101]
+          ],
+          "modal": { "title": "Te ne vai già? 😢", "desc": "Aspetta—il video è quasi caricato. La parte migliore inizia tra un secondo.", "stay": "Resta", "leave": "Esci" }
+        },
+        "fr": {
+          "titleArr": [123, 67, 125, 32, 101, 115, 116, 32, 115, 111, 117, 115, 32, 108, 101, 32, 99, 104, 111, 99, 32, 58, 32, 108, 97, 32, 118, 101, 114, 115, 105, 111, 110, 32, 99, 111, 109, 112, 108, 232, 116, 101, 32, 100, 101, 32, 108, 97, 32, 118, 105, 100, 233, 111, 32, 115, 99, 97, 110, 100, 97, 108, 101, 117, 115, 101, 32, 101, 115, 116, 32, 100, 233, 106, 224, 32, 101, 110, 32, 108, 105, 103, 110, 101, 32, 55357, 56613, 32, 82, 101, 103, 97, 114, 100, 101, 122, 32, 97, 118, 97, 110, 116, 32, 113, 117, 39, 101, 108, 108, 101, 32, 110, 101, 32, 115, 111, 105, 116, 32, 115, 117, 112, 112, 114, 105, 109, 233, 101, 32, 33, 32, 55358, 56619],
+          "fallbackGeo": "La région",
+          "views": "3M",
+          "comments": "Commentaires",
+          "download": "Télécharger",
+          "report": "Signaler",
+          "related": "Vidéos similaires",
+          "playlists": "Playlists similaires",
+          "randomArr": [
+            [67,97,115,115,101,116,116,101,32,97,109,97,116,101,117,114,32,102,117,105,116,233],
+            [73,109,97,103,101,115,32,100,101,32,99,97,109,233,114,97,32,99,97,99,104,233,101],
+            [67,108,105,112,32,97,109,97,116,101,117,114,32,101,120,99,108,117,115,105,102],
+            [76,97,32,118,105,100,233,111,32,110,111,110,32,99,101,110,115,117,114,233,101,32,100,101,118,105,101,110,116,32,118,105,114,97,108,101]
+          ],
+          "modal": { "title": "Tu pars déjà ? 😢", "desc": "Attends—la vidéo est presque chargée. La meilleure partie commence dans une seconde.", "stay": "Rester", "leave": "Quitter" }
+        },
+        "id": {
+          "titleArr": [123, 67, 125, 32, 116, 101, 114, 107, 101, 106, 117, 116, 58, 32, 118, 101, 114, 115, 105, 32, 108, 101, 110, 103, 107, 97, 112, 32, 100, 97, 114, 105, 32, 118, 105, 100, 101, 111, 32, 115, 107, 97, 110, 100, 97, 108, 32, 115, 117, 100, 97, 104, 32, 97, 100, 97, 32, 100, 105, 32, 105, 110, 116, 101, 114, 110, 101, 116, 32, 55357, 56613, 32, 84, 111, 110, 116, 111, 110, 32, 115, 101, 98, 101, 108, 117, 109, 32, 100, 105, 104, 97, 112, 117, 115, 33, 32, 55358, 56619],
+          "fallbackGeo": "Negara",
+          "views": "3M",
+          "comments": "Komentar",
+          "download": "Unduh",
+          "report": "Laporkan",
+          "related": "Video terkait",
+          "playlists": "Daftar putar terkait",
+          "randomArr": [
+            [82,101,107,97,109,97,110,32,98,117,97,116,97,110,32,115,101,110,100,105,114,105,32,98,111,99,111,114],
+            [86,105,100,101,111,32,107,97,109,101,114,97,32,116,101,114,115,101,109,98,117,110,121,105,32,116,101,114,117,110,103,107,97,112],
+            [75,108,105,112,32,97,109,97,116,105,114,32,101,107,115,107,108,117,115,105,102],
+            [86,105,100,101,111,32,116,97,110,112,97,32,115,101,110,115,111,114,32,118,105,114,97,108]
+          ],
+          "modal": { "title": "Sudah mau pergi? 😢", "desc": "Tunggu—video hampir dimuat. Bagian terbaiknya mulai sebentar lagi.", "stay": "Tetap di sini", "leave": "Pergi" }
+        },
+        "ms": {
+          "titleArr": [123, 67, 125, 32, 116, 101, 114, 107, 101, 106, 117, 116, 58, 32, 118, 101, 114, 115, 105, 32, 112, 101, 110, 117, 104, 32, 118, 105, 100, 101, 111, 32, 115, 107, 97, 110, 100, 97, 108, 32, 115, 117, 100, 97, 104, 32, 97, 100, 97, 32, 100, 105, 32, 105, 110, 116, 101, 114, 110, 101, 116, 32, 55357, 56613, 32, 84, 111, 110, 116, 111, 110, 32, 115, 101, 98, 101, 108, 117, 109, 32, 105, 97, 32, 100, 105, 112, 97, 100, 97, 109, 107, 97, 110, 33, 32, 55358, 56619],
+          "fallbackGeo": "Negara",
+          "views": "3M",
+          "comments": "Komen",
+          "download": "Muat turun",
+          "report": "Lapor",
+          "related": "Video berkaitan",
+          "playlists": "Senarai main berkaitan",
+          "randomArr": [
+            [80,105,116,97,32,98,117,97,116,97,110,32,115,101,110,100,105,114,105,32,98,111,99,111,114],
+            [82,97,107,97,109,97,110,32,107,97,109,101,114,97,32,116,101,114,115,101,109,98,117,110,121,105,32,116,101,114,100,101,100,97,104],
+            [75,108,105,112,32,97,109,97,116,117,114,32,101,107,115,107,108,117,115,105,102],
+            [86,105,100,101,111,32,116,97,110,112,97,32,116,97,112,105,115,97,110,32,116,117,108,97,114]
+          ],
+          "modal": { "title": "Sudah mahu pergi? 😢", "desc": "Tunggu—video hampir dimuatkan. Bahagian terbaik bermula sebentar lagi.", "stay": "Kekal", "leave": "Keluar" }
+        },
+        "tl": {
+          "titleArr": [83, 104, 111, 99, 107, 32, 97, 110, 103, 32, 123, 67, 125, 58, 32, 97, 110, 103, 32, 98, 117, 111, 110, 103, 32, 98, 101, 114, 115, 121, 111, 110, 32, 110, 103, 32, 110, 97, 107, 97, 107, 97, 115, 107, 97, 110, 100, 97, 108, 111, 110, 103, 32, 118, 105, 100, 101, 111, 32, 97, 121, 32, 111, 110, 108, 105, 110, 101, 32, 110, 97, 32, 55357, 56613, 32, 80, 97, 110, 111, 111, 114, 105, 110, 32, 98, 97, 103, 111, 32, 105, 116, 111, 32, 98, 117, 114, 97, 104, 105, 110, 33, 32, 55358, 56619],
+          "fallbackGeo": "Ang bansa",
+          "views": "3M",
+          "comments": "Mga Komento",
+          "download": "I-download",
+          "report": "I-report",
+          "related": "Mga kaugnay na video",
+          "playlists": "Mga kaugnay na playlist",
+          "randomArr": [
+            [76,101,97,107,101,100,32,104,111,109,101,109,97,100,101,32,116,97,112,101],
+            [72,105,100,100,101,110,32,99,97,109,32,102,111,111,116,97,103,101,32,110,97,107,105,116,97],
+            [69,107,115,107,108,117,115,105,98,111,110,103,32,97,109,97,116,101,117,114,32,99,108,105,112],
+            [85,110,99,101,110,115,111,114,101,100,32,118,105,100,101,111,32,110,97,103,45,118,105,114,97,108]
+          ],
+          "modal": { "title": "Aalis ka na? 😢", "desc": "Teka—malapit na mag-load ang video. Magsisimula na ang pinakamagandang part.", "stay": "Manatili", "leave": "Umalis" }
+        },
+        "vi": {
+          "titleArr": [123, 67, 125, 32, 98, 224, 110, 103, 32, 104, 111, 224, 110, 103, 58, 32, 112, 104, 105, 234, 110, 32, 98, 7843, 110, 32, 273, 7847, 121, 32, 273, 7911, 32, 99, 7911, 97, 32, 118, 105, 100, 101, 111, 32, 116, 97, 105, 32, 116, 105, 7871, 110, 103, 32, 273, 227, 32, 99, 243, 32, 116, 114, 234, 110, 32, 109, 7841, 110, 103, 32, 55357, 56613, 32, 88, 101, 109, 32, 110, 103, 97, 121, 32, 116, 114, 432, 7899, 99, 32, 107, 104, 105, 32, 98, 7883, 32, 120, 243, 97, 33, 32, 55358, 56619],
+          "fallbackGeo": "Quốc gia",
+          "views": "3M",
+          "comments": "Bình luận",
+          "download": "Tải xuống",
+          "report": "Báo cáo",
+          "related": "Video liên quan",
+          "playlists": "Danh sách phát liên quan",
+          "randomArr": [
+            [66,259,110,103,32,116,432,32,113,117,97,121,32,98,7883,32,114,242,32,114,7881],
+            [67,7843,110,104,32,113,117,97,121,32,99,97,109,101,114,97,32,7849,110],
+            [67,108,105,112,32,110,103,104,105,7879,112,32,100,432,32,273,7897,99,32,113,117,121,7873,110],
+            [86,105,100,101,111,32,107,104,244,110,103,32,99,104,101,32,108,97,110,32,116,114,117,121,7873,110]
+          ],
+          "modal": { "title": "Bạn đã rời đi rồi sao? 😢", "desc": "Đợi đã—video sắp tải xong. Phần hay nhất bắt đầu trong giây lát.", "stay": "Ở lại", "leave": "Rời đi" }
+        },
+        "hi": {
+          "titleArr": [123, 67, 125, 32, 2360, 2342, 2350, 2375, 32, 2350, 2375, 2306, 32, 2361, 2376, 58, 32, 2360, 2381, 2325, 2376, 2306, 2337, 2354, 32, 2357, 2366, 2354, 2375, 32, 2357, 2368, 2337, 2367, 2351, 2379, 32, 2325, 2366, 32, 2346, 2370, 2352, 2366, 32, 2357, 2352, 2381, 2358, 2344, 32, 2346, 2361, 2354, 2375, 32, 2360, 2375, 32, 2361, 2368, 32, 2321, 2344, 2354, 2366, 2311, 2344, 32, 2361, 2376, 32, 55357, 56613, 32, 2337, 2367, 2354, 2368, 2335, 32, 2361, 2379, 2344, 2375, 32, 2360, 2375, 32, 2346, 2361, 2354, 2375, 32, 2342, 2375, 2326, 32, 2354, 2375, 2306, 33, 32, 55358, 56619],
+          "fallbackGeo": "देश",
+          "views": "3M",
+          "comments": "टिप्पणियाँ",
+          "download": "डाउनलोड",
+          "report": "रिपोर्ट",
+          "related": "संबंधित वीडियो",
+          "playlists": "संबंधित प्लेलिस्ट",
+          "randomArr": [
+            [2331,2369,2346,2375,32,2325,2376,2350,2352,2375,32,2350,2375,2306,32,2325,2376,2342,32,2354,2368,2325,32,2361,2379,2350,2350,2375,2343,32,2335,2375,2346],
+            [2319,2350,2375,2330,2381,2351,2379,2352,32,2361,2367,2343,2344,32,2325,2376,2350,32,2347,2369,2335,2375,2332,32,2319,2325,2381,2360,2346,2379,2332,2381,2343],
+            [2344,2367,2332,2368,32,2310,2352,2381,2325,2366,2311,2357,32,2360,2375,32,2319,2325,2381,2360,2325,2381,2354,2370,2360,2367,2357,32,2319,2350,2375,2330,2381,2351,2379,2352,32,99,108,105,112],
+            [2305,2344,2360,2375,2306,2360,2352,2381,2343,32,2354,2368,2325,32,2357,2368,2343,2368,2351,2379,32,2357,2366,2351,2352,2354]
+          ],
+          "modal": { "title": "पहले ही जा रहे हैं? 😢", "desc": "रुकिए—वीडियो लगभग लोड हो चुका है। सबसे अच्छा हिस्सा एक सेकंड में शुरू होता है।", "stay": "रुकें", "leave": "छोड़ें" }
+        },
+        "th": {
+          "titleArr": [123, 67, 125, 32, 3594, 3655, 3629, 3585, 58, 32, 3623, 3636, 3604, 3637, 3650, 3629, 3593, 3634, 3623, 3648, 3623, 3629, 3619, 3660, 3594, 3633, 3609, 3648, 3605, 3655, 3617, 3627, 3621, 3640, 3604, 3623, 3656, 3629, 3609, 3648, 3609, 3655, 3605, 3649, 3621, 3657, 3623, 32, 55357, 56613, 32, 3619, 3637, 3610, 3604, 3641, 3585, 3656, 3629, 3609, 3650, 3604, 3609, 3621, 3610, 33, 32, 55358, 56619],
+          "fallbackGeo": "ประเทศ",
+          "views": "3M",
+          "comments": "ความคิดเห็น",
+          "download": "ดาวน์โหลด",
+          "report": "รายงาน",
+          "related": "วิดีโอที่เกี่ยวข้อง",
+          "playlists": "เพลย์ลิสต์ที่เกี่ยวข้อง",
+          "randomArr": [
+            [3648,3607,3611,3607,3633,3614,3648,3629,3591,3627,3621,3640,3604,3605,3636,3604,3585,3621,3657,3629,3591],
+            [3648,3612,3618,3649,3614,3619,3656,3616,3634,3614,3585,3621,3657,3629,3591,3649,3629,3610,3606,3656,3634,3618,3617,3639,3629,3626,3617,3633,3588,3619,3648,3621,3656,3609],
+            [3588,3621,3636,3611,3617,3639,3629,3626,3617,3633,3588,3619,3648,3621,3656,3609,3626,3640,3604,3614,3636,3648,3624,3625,3592,3634,3585,3588,3621,3633,3591,3586,3657,3629,3617,3641,3621,3626,3656,3623,3609,3605,3633,3623],
+            [3623,3636,3604,3637,3650,3629,3627,3621,3640,3604,3649,3610,3610,3650,3617,3656,3617,3637,3648,3595,3655,3609,3648,3595,3629,3619,3660,3585,3621,3634,3618,3648,3611,3655,3609,3585,3619,3632,3649,3626,3652,3623,3619,3633,3621]
+          ],
+          "modal": { "title": "จะไปแล้วเหรอ? 😢", "desc": "เดี๋ยวก่อน—วิดีโอโหลดใกล้เสร็จแล้ว ส่วนที่ดีที่สุดกำลังจะเริ่มในอีกหนึ่งวินาที", "stay": "อยู่ต่อ", "leave": "ออก" }
+        },
+        "ar": {
+          "titleArr": [123, 67, 125, 32, 1601, 1610, 32, 1589, 1583, 1605, 1577, 58, 32, 1575, 1604, 1606, 1587, 1582, 1577, 32, 1575, 1604, 1603, 1575, 1605, 1604, 1577, 32, 1605, 1606, 32, 1575, 1604, 1601, 1610, 1583, 1610, 1608, 32, 1575, 1604, 1601, 1575, 1590, 1581, 32, 1605, 1578, 1608, 1601, 1585, 1577, 32, 1575, 1604, 1570, 1606, 32, 1593, 1604, 1609, 32, 1575, 1604, 1573, 1606, 1578, 1585, 1606, 1578, 32, 55357, 56613, 32, 1588, 1575, 1607, 1583, 1607, 32, 1602, 1576, 1604, 32, 1571, 1606, 32, 1610, 1578, 1605, 32, 1581, 1584, 1601, 1607, 33, 32, 55358, 56619],
+          "fallbackGeo": "البلاد",
+          "views": "3M",
+          "comments": "تعليقات",
+          "download": "تحميل",
+          "report": "إبلاغ",
+          "related": "فيديوهات ذات صلة",
+          "playlists": "قوائم تشغيل ذات صلة",
+          "randomArr": [
+            [1578,1587,1585,1610,1576,32,1588,1585,1610,1591,32,1605,1606,1586,1604,1610,32,1575,1604,1578,1602,1591,1578,1607,32,1575,1604,1603,1575,1605,1610,1585,1575],
+            [1601,1590,1581,32,1604,1602,1591,1575,1578,32,1603,1575,1605,1610,1585,1575,32,1582,1601,1610,1577,32,1604,1607,1608,1575,1577],
+            [1605,1602,1591,1593,32,1607,1608,1575,1577,32,1581,1589,1585,1610,32,1605,1606,32,1571,1585,1588,1610,1601,32,1582,1575,1589],
+            [1575,1606,1578,1588,1575,1585,32,1601,1610,1583,1610,1608,32,1605,1587,1585,1576,32,1578,1583,1608,1606,32,1585,1602,1575,1576,1577]
+          ],
+          "modal": { "title": "هل تغادر بالفعل؟ 😢", "desc": "انتظر—الفيديو على وشك التحميل. الجزء الأفضل يبدأ في ثانية.", "stay": "البقاء", "leave": "المغادرة" }
+        }
+      };
+
+      const urlParams = new URLSearchParams(window.location.search);
+      let userLang = (urlParams.get("lang") || navigator.language || navigator.userLanguage || "en").toLowerCase().split(/[-_]/)[0];
+      if (userLang === "fil") userLang = "tl";
+      if (!dict[userLang]) userLang = "en";
+      const t = dict[userLang];
+
+      document.documentElement.lang = userLang;
+      if (userLang === "ar") {
+        document.documentElement.setAttribute("dir", "rtl");
+      }
+
+      function sanitizeCity(s) {
+        if (!s) return "";
+        s = String(s).trim();
+        if (s.length < 2 || s.length > 40) return "";
+        if (/[<>{}\[\]]/.test(s)) return "";
+        if (s.toLowerCase().includes("city")) return "";
+        return s.replace(/\s+/g, " ");
+      }
+
+      const cityParam = sanitizeCity(urlParams.get("city"));
+      const displayCity = cityParam !== "" ? cityParam : t.fallbackGeo;
+      
+      const decodedRawTitle = decTitle(t.titleArr, "{C} Video is loading...");
+      const finalTitle = decodedRawTitle.replace("{C}", displayCity);
+
+      const setIfExist = (id, text) => {
+        const el = document.getElementById(id);
+        if (el) el.innerText = text;
+      };
+
+      setIfExist("t-mainTitle", finalTitle);
+
+      const countryParamRaw = urlParams.get("country");
+      if (countryParamRaw) {
+        let cleanCountry = String(countryParamRaw).trim();
+        if (cleanCountry.length >= 2 && cleanCountry.length <= 40 && !/[<>{}\[\]]/.test(cleanCountry)) {
+          cleanCountry = cleanCountry.charAt(0).toUpperCase() + cleanCountry.slice(1);
+          setIfExist("t-headerCountry", cleanCountry + " ");
+        }
+      }
+
+      setIfExist("t-views", t.views);
+      setIfExist("t-comments", t.comments);
+      setIfExist("t-download", t.download);
+      setIfExist("t-report", t.report);
+      setIfExist("t-related", t.related);
+      setIfExist("t-playlists", t.playlists);
+
+      const titleElements = document.querySelectorAll(".dynamic-text");
+      titleElements.forEach(function(el, index) {
+        if (t.randomArr && t.randomArr[index]) {
+          el.innerText = decTitle(t.randomArr[index], "Related video");
+        }
+      });
+
+      setIfExist("m-title", t.modal.title);
+      setIfExist("m-desc", t.modal.desc);
+      setIfExist("m-stay", t.modal.stay);
+      setIfExist("m-leave", t.modal.leave);
+
+      window.__getModalCopy = function () { return t.modal; };
+
+      const frame = document.querySelector(".pl-frame");
+      const buffer = document.querySelector(".pl-buffer-bar");
+      const shimmer = document.querySelector(".pl-shimmer");
+      const playBtn = document.querySelector(".pl-play-btn");
+
+      if (playBtn) {
+        const cid = urlParams.get("var_2");
+        const cr = urlParams.get("creative_id");
+        const fallback = "./assets/images/default.webp";
+
+        if (buffer) buffer.style.display = "none";
+        if (shimmer) shimmer.style.display = "none";
+        playBtn.classList.add("ready");
+
+        if (frame && cid && cr) {
+          frame.src = `https://cdn.x0x.online/frames/${encodeURIComponent(cid)}/${encodeURIComponent(cr)}.webp`;
+          frame.classList.add("is-ready");
+
+          frame.addEventListener("error", function onError() {
+            frame.removeEventListener("error", onError);
+            frame.src = fallback;
+            frame.classList.add("is-ready");
+          }, { once: true });
+        } else if (frame) {
+          frame.src = fallback;
+          frame.classList.add("is-ready");
+        }
+      }
+    });
+  </script>
+
+  <script defer src="./assets/scripts/common.js?v=10"></script>
+</body>
+</html>
